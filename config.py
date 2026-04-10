@@ -1,104 +1,172 @@
 """
-config.py — Paramètres métier de l'agent PubMed Oxeltis
+config.py — Oxeltis PubMed Agent — Business parameters
 ========================================================
-Ce fichier contient TOUTE la "sauce secrète" de qualification des leads.
-Il peut être modifié par l'expert Oxeltis sans toucher au code de l'application.
+This file contains ALL the qualification criteria ("secret sauce").
+It can be modified by the Oxeltis expert without touching the application code.
 
-Sections :
-  1. OXELTIS_CONTEXT       → Description des services d'Oxeltis (injecté dans Claude)
-  2. SCORING_RULES         → Règles de score 0-5 (injecté dans Claude)
-  3. INDUSTRY_KEYWORDS     → Mots qui signalent une affiliation industrie dans PubMed
-  4. ACADEMIC_KEYWORDS     → Mots qui signalent un labo académique (à exclure)
-  5. SKIP_DOMAINS          → Sites web à ignorer lors de la recherche d'URL
+Sections:
+  1. OXELTIS_CONTEXT       → Description of Oxeltis services (injected into Claude)
+  2. SCORING_RULES         → Scoring rules 0-5 (injected into Claude)
+  3. INDUSTRY_KEYWORDS     → Words signaling an industry affiliation in PubMed
+  4. ACADEMIC_KEYWORDS     → Words signaling an academic lab (to exclude)
+  5. SKIP_DOMAINS          → Websites to ignore when searching for a company URL
 """
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 1. CONTEXTE OXELTIS
-#    Décrit ce qu'Oxeltis fait et ne fait PAS.
-#    Claude s'en sert pour évaluer si une société est dans le scope.
-#    → Modifier si Oxeltis ajoute/retire des services ou change de focus.
+# 1. OXELTIS CONTEXT
+#    Describes what Oxeltis does and does NOT do.
+#    Claude uses this to evaluate whether a company is in scope.
+#    → Update when Oxeltis adds/removes services or changes focus.
 # ══════════════════════════════════════════════════════════════════════════════
 
 OXELTIS_CONTEXT = """
-Oxeltis est un CRO (Contract Research Organization) spécialisé en chimie médicinale
-et chimie organique fine.
+Oxeltis
+- Medicinal chemistry services
+- Fine organic chemistry services
+- Early drug discovery support
+- Hit-to-lead optimization
+- Lead generation
+- Lead optimization
+- Drug candidate selection
+- FTE chemist support
 
-Services proposés :
-- Hit-to-Lead optimization et Lead optimization (petites molécules / small molecules)
-- Synthèse custom : nucléosides, nucléotides, phosphoramidites, PROTACs, ADC linkers, peptides
-- Chimiothèque focalisée (10-100 composés), scouting de routes de synthèse (mg à 100g)
-- Chimies complexes : hétérocycliques, macrocycles, fluor, phosphore
-- ADME/PK in vitro, analyse SAR, sélection de candidats médicaments
-- In silico design (CADD, SBDD, LBDD, AI/ML) via partenariats
-- Criblage in vitro et profilage pharmacologique précoce
+Biomedical focus
+- Antivirals
+- Antibacterials
+- Oncology
 
-Domaines thérapeutiques prioritaires :
-- Antiviraux (nucléosides, analogues de nucléotides)
-- Antibactériens / résistance aux antibiotiques
-- Oncologie early-stage (inhibiteurs de kinases, dégradeurs PROTAC)
-- Maladies rares / orphelines
-- Neurologie (composés BBB-penetrant)
+Chemical capabilities
+- Nucleoside chemistry
+- Nucleotide chemistry
+- Base-modified analogs
+- Sugar-modified analogs
+- Monophosphates
+- Diphosphates
+- Triphosphates
+- Phosphoramidites
+- Dinucleotides
+- Oligosaccharides
+- Monosaccharides
+- Iminosugars
+- Sugar phosphates
+- Unnatural sugars
+- Saccharide antigens
+- Heterocyclic chemistry
+- Macrocyclic chemistry
+- Peptide chemistry
+- ADC linkers
+- Phosphorus chemistry
+- Fluorine chemistry
 
-Ce qu'Oxeltis NE fait PAS :
-- Thérapies biologiques : anticorps monoclonaux, protéines thérapeutiques
+Custom synthesis
+- NCE synthesis
+- Building blocks
+- Scaffolds
+- Intermediates
+- Metabolites
+- Impurities
+- Reference compounds
+
+Research and diagnostic tools
+- Nucleoside analogs
+- Nucleotide analogs
+- Fluorescent dyes
+- Diagnostic kit reagents
+
+Scale
+- mg to 50-100 g in-house
+- 20 g to kg via external partners
+
+Relevant buyer fit
+- Antiviral drug developers
+- Nucleos(t)ide drug developers
+- Anti-infective biotech
+- Oncology biotech
+- Pharma discovery teams
+- CRO outsourcing buyers
+- Diagnostic and assay developers
+
+What Oxeltis does NOT do:
+- Biological therapies: monoclonal antibodies, protein therapeutics
 - Gene therapy, cell therapy, CAR-T
-- Vaccins mRNA
-- Programmes en phase clinique avancée (Phase II/III) sans besoin de nouveaux composés
+- mRNA vaccines
+- Advanced clinical-stage programs (Phase II/III) with no need for new compounds
 """
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 2. RÈGLES DE SCORING (0 à 5)
-#    Ces règles sont envoyées à Claude pour qu'il attribue un score à chaque société.
-#    → Modifier si les critères de qualification d'Oxeltis changent.
-#    → Modifier la règle "accroche" pour changer le ton des messages de prospection.
+# 2. SCORING RULES (0 to 5)
+#    These rules are sent to Claude to assign a score to each company.
+#    Context: companies are sourced from PubMed paper affiliations —
+#    they already publish on drug discovery. The key differentiators are
+#    company size (does it need a CRO?) and chemistry fit with Oxeltis.
+#    → Update if Oxeltis qualification criteria change.
 # ══════════════════════════════════════════════════════════════════════════════
 
 SCORING_RULES = """
-MODALITE (type de programme) :
-- small_molecule : détecte "small molecule", "medicinal chemistry", "CADD", "SBDD",
+MODALITY (type of program):
+- small_molecule: detects "small molecule", "medicinal chemistry", "CADD", "SBDD",
   "drug discovery", "hit-to-lead", "lead optimization", "synthesis", "compound",
   "nucleoside", "PROTAC", "fragment", "HTS", "SAR", "chemical matter"
-- biologics : détecte "antibody", "biologics", "gene therapy", "cell therapy",
-  "mRNA", "CAR-T", "protein therapeutic", "monoclonal" SANS mention small molecule
-- mixte : les deux familles sont présentes
-- inconnu : aucun signal clair
+- biologics: detects "antibody", "biologics", "gene therapy", "cell therapy",
+  "mRNA", "CAR-T", "protein therapeutic", "monoclonal" WITHOUT mention of small molecule
+- mixed: both families are present
+- unknown: no clear signal
 
-STADE (avancement du programme) :
-- hit_to_lead : "hit identification", "hit-to-lead", "fragment screening", "HTS", "early discovery"
-- lead_opt : "lead optimization", "lead candidate", "IND-enabling", "preclinical optimization"
-- preclinique : "preclinical", "in vivo", "animal model", "IND filed" (sans lead opt)
-- clinique : "Phase I", "Phase II", "Phase III", "clinical trial", "clinical stage"
-- inconnu : aucun signal clair
+STAGE (program advancement):
+- hit_to_lead: "hit identification", "hit-to-lead", "fragment screening", "HTS", "early discovery"
+- lead_opt: "lead optimization", "lead candidate", "IND-enabling", "preclinical optimization"
+- preclinical: "preclinical", "in vivo", "animal model", "IND filed" (without lead opt)
+- clinical: "Phase I", "Phase II", "Phase III", "clinical trial", "clinical stage"
+- unknown: no clear signal
 
-SCORE (1 à 5) — pertinence pour Oxeltis :
-- 5 : small_molecule + hit_to_lead ou lead_opt → prospect chaud idéal
-- 4 : small_molecule + stade préclinique ou inconnu (peut avoir besoin de nouvelles molécules)
-- 3 : small_molecule probable/mixte OU nucléoside/PROTAC/fragment mentionné
-- 2 : modalité incertaine, stade clinique avancé, ou société trop grande
-- 1 : biologics / gene therapy / cell therapy / mRNA / CAR-T (hors scope Oxeltis)
-- 0 : contenu insuffisant ou site inaccessible
+SCORE (0 to 5) — relevance for Oxeltis as a CRO partner:
 
-ACCROCHE — règles de rédaction :
-- Une phrase en français, personnalisée, mentionnant le nom de la société
-- Mentionner leur programme ou domaine thérapeutique si identifié
-- Expliquer concrètement comment Oxeltis peut aider (ex: synthèse, hit-to-lead, etc.)
-- Ton professionnel et direct (pas de formules génériques)
-- Si score=1 → écrire "Hors scope Oxeltis — programme biologics/gene therapy"
-- Si score=0 → écrire "Contenu insuffisant pour qualifier ce prospect"
+Key principle: companies are sourced from PubMed, so they already do drug discovery.
+The score must reflect: (1) company size/need for external chemistry support,
+(2) chemistry fit with Oxeltis expertise, (3) therapeutic area alignment.
+
+- 5: Early-stage startup or small biotech (< ~50 employees suggested), small molecule program,
+     AND topic directly matches Oxeltis specialty: nucleoside/nucleotide chemistry, antiviral,
+     antibacterial, PROTAC, fragment-based, oncology early-stage. Ideal hot prospect.
+
+- 4: Small-to-mid biotech (~50-200 employees), small molecule program, early or preclinical stage.
+     Likely to outsource chemistry. Good prospect.
+
+- 3: Mid-size biotech (200-1000 employees), small molecule, uncertain outsourcing need.
+     Or small biotech with general chemistry not perfectly aligned with Oxeltis.
+     Worth qualifying manually.
+
+- 2: Large biotech (> 1000 employees) with possible outsourcing, or company at clinical stage
+     where new chemistry needs are limited. Low priority.
+
+- 1: Top 20 global pharma (Roche, Pfizer, Novartis, AstraZeneca, Merck, Lilly, J&J, BMS,
+     Sanofi, GSK, AbbVie, Amgen, Gilead, Takeda, Bayer, Boehringer, etc.) — they have
+     hundreds of internal chemists and will never outsource to a small CRO.
+     OR pure biologics/gene therapy/cell therapy company (out of Oxeltis scope).
+
+- 0: Academic institution incorrectly detected, or insufficient content to qualify.
+
+OUTREACH MESSAGE rules:
+- One sentence in English, personalized, mentioning the company name
+- Reference their specific program or therapeutic area if identified
+- Explain concretely how Oxeltis can help (synthesis, hit-to-lead, nucleoside chemistry, etc.)
+- Professional and direct tone (no generic formulas)
+- If score=1 → write "Out of scope for Oxeltis — large pharma or biologics program"
+- If score=0 → write "Insufficient content to qualify this prospect"
 """
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 3. MOTS-CLÉS : AFFILIATIONS INDUSTRIE
-#    Si UNE de ces expressions est trouvée dans l'affiliation d'un auteur PubMed,
-#    la société est considérée comme industrielle (biotech/pharma) et sera analysée.
-#    → Ajouter des termes si des affiliations pertinentes sont manquées.
-#    → Retirer des termes si trop de faux positifs sont générés.
+# 3. KEYWORDS: INDUSTRY AFFILIATIONS
+#    If ONE of these expressions is found in a PubMed author affiliation,
+#    the company is considered an industry (biotech/pharma) entity and will be analyzed.
+#    → Add terms if relevant affiliations are being missed.
+#    → Remove terms if too many false positives are generated.
 # ══════════════════════════════════════════════════════════════════════════════
 
 INDUSTRY_KEYWORDS = [
-    # Types de sociétés
+    # Company types
     "therapeutics",
     "biosciences",
     "biotech",
@@ -109,7 +177,7 @@ INDUSTRY_KEYWORDS = [
     "biotechnology",
     "drug discovery",
     "medicines",
-    # Formes juridiques (signalent une entreprise privée)
+    # Legal forms (signal a private company)
     " inc.",
     " inc,",
     " llc",
@@ -124,17 +192,17 @@ INDUSTRY_KEYWORDS = [
     " ag ",
     " corp.",
     " corporation",
-    # Termes complémentaires
+    # Complementary terms
     "sciences inc",
     "bioscience",
 ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 4. MOTS-CLÉS : AFFILIATIONS ACADÉMIQUES (à exclure)
-#    Si UNE de ces expressions est trouvée, l'affiliation est considérée comme
-#    un labo académique et sera ignorée (pas un prospect pour Oxeltis).
-#    → Ajouter des termes si des labos passent encore dans les résultats.
+# 4. KEYWORDS: ACADEMIC AFFILIATIONS (to exclude)
+#    If ONE of these expressions is found, the affiliation is considered
+#    an academic lab and will be ignored (not a prospect for Oxeltis).
+#    → Add terms if academic labs still appear in results.
 # ══════════════════════════════════════════════════════════════════════════════
 
 ACADEMIC_KEYWORDS = [
@@ -171,19 +239,19 @@ ACADEMIC_KEYWORDS = [
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 5. DOMAINES À IGNORER (lors de la recherche d'URL d'une société)
-#    Ces domaines ne sont jamais retenus comme site officiel d'une société.
-#    → Ajouter un domaine si Firecrawl retourne trop souvent des agrégateurs.
+# 5. DOMAINS TO IGNORE (when searching for a company URL)
+#    These domains are never retained as the official website of a company.
+#    → Add a domain if Firecrawl keeps returning aggregator sites.
 # ══════════════════════════════════════════════════════════════════════════════
 
 SKIP_DOMAINS = [
-    # Réseaux sociaux
+    # Social media
     "linkedin.com",
     "twitter.com",
     "x.com",
     "facebook.com",
     "youtube.com",
-    # Bases de données scientifiques
+    # Scientific databases
     "pubmed.ncbi",
     "ncbi.nlm.nih.gov",
     "biorxiv.org",
@@ -192,7 +260,7 @@ SKIP_DOMAINS = [
     "science.org",
     "researchgate.net",
     "academia.edu",
-    # Agrégateurs business
+    # Business aggregators
     "crunchbase.com",
     "bloomberg.com",
     "reuters.com",
